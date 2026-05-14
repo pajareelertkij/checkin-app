@@ -578,7 +578,7 @@ async function submitLeave() {
   };
 
   try {
-    const res = await fetch(CONFIG.GAS_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const res = await fetch(CONFIG.GAS_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(payload), redirect:'follow' });
     const json = await res.json();
     if (json.status === 'ok') {
       const typeLabel = { sick:'ลาป่วย', personal:'ลากิจ', vacation:'พักร้อน' }[S.leaveType];
@@ -670,7 +670,7 @@ async function submitCheckin() {
   };
 
   try {
-    const res = await fetch(CONFIG.GAS_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const res = await fetch(CONFIG.GAS_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(payload), redirect:'follow' });
     const json = await res.json();
     if (json.status === 'ok') {
       // circle color
@@ -724,7 +724,7 @@ function reset() {
 // ── Vacation info ──
 async function loadVacInfo() {
   try {
-    const res = await fetch(`${CONFIG.GAS_URL}?action=vacinfo&userId=${S.effectiveUserId}`);
+    const res = await fetch(`${CONFIG.GAS_URL}?action=vacinfo&userId=${S.effectiveUserId}`, { redirect:'follow' });
     const json = await res.json();
     if (json.status==='ok') {
       const vcard = document.getElementById('vacCard');
