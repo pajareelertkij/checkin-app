@@ -666,7 +666,7 @@ async function submitCheckin() {
     lateMinutes: ts.lateMin,
     earlyBonus: ts.type==='early' ? 20 : 0,
     lat: S.lat, lng: S.lng, dist: Math.round(S.dist),
-    image: S.dataURL.substring(0, 100),
+    image: '',
   };
 
   try {
