@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
+  <title>เช็คอิน — รุ่งเรืองเจริญ</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #f5f3ee;
+      --card: #ffffff;
+      --dark: #1a1a2e;
+      --green: #2d6a4f;
+      --green-light: #e8f5e9;
+      --green-border: #a5d6a7;
+      --gold: #b8860b;
+      --gold-light: #fff8e1;
+      --red: #c0392b;
+      --red-light: #fdecea;
+      --blue: #1565c0;
+      --blue-light: #e3f2fd;
+      --gray: #78909c;
+      --border: #e0ddd6;
+      --text: #1a1a2e;
+      --muted: #78909c;
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { background: var(--bg); color: var(--text); font-family: 'Sarabun', sans-serif; min-height: 100vh; }
+
+    /* ── Header ── */
+    .header { background: var(--dark); color: #fff; padding: 16px 20px 14px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 50; }
+    .header-logo { width: 36px; height: 36px; background: var(--green); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .header-info { flex: 1; }
+    .header-info h1 { font-size: 15px; font-weight: 600; }
+    .header-info p { font-size: 11px; color: #aaa; font-family: 'IBM Plex Mono', monospace; margin-top: 1px; }
+    .header-clock { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; color: #fff; flex-shrink: 0; }
+
+    /* ── Screen system ── */
+    .screen { display: none; flex-direction: column; padding: 16px; gap: 12px; min-height: calc(100vh - 66px); }
+    .screen.active { display: flex; animation: fadeUp 0.25s ease; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Cards ── */
+    .card { background: var(--card); border-radius: 14px; padding: 16px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+    .card-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+
+    /* ── User row ── */
+    .user-row { display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--green); display: flex; align-items: center; justify-content: center; font-size: 20px; overflow: hidden; flex-shrink: 0; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .user-name { font-size: 16px; font-weight: 600; }
+    .user-id { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+
+    /* ── Status badge ── */
+    .status-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; }
+    .status-icon { font-size: 20px; }
+    .status-text { font-size: 14px; font-weight: 500; flex: 1; }
+    .status-sub { font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); }
+    .s-ok   { background: var(--green-light); border: 1px solid var(--green-border); }
+    .s-bad  { background: var(--red-light);   border: 1px solid #ef9a9a; }
+    .s-wait { background: var(--gold-light);  border: 1px solid #ffe082; }
+
+    /* ── Time badge ── */
+    .time-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+    .tb-early  { background: var(--gold-light);  color: var(--gold);  border: 1px solid #ffe082; }
+    .tb-normal { background: var(--green-light); color: var(--green); border: 1px solid var(--green-border); }
+    .tb-late   { background: var(--red-light);   color: var(--red);   border: 1px solid #ef9a9a; }
+    .tb-closed { background: #eceff1;            color: var(--gray);  border: 1px solid #cfd8dc; }
+
+    /* ── Type selector ── */
+    .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .type-btn { padding: 14px 10px; border-radius: 12px; border: 2px solid var(--border); background: var(--card); font-family: 'Sarabun', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.15s; color: var(--muted); }
+    .type-btn.sel-in  { border-color: var(--green); background: var(--green-light); color: var(--green); }
+    .type-btn.sel-out { border-color: var(--red);   background: var(--red-light);   color: var(--red); }
+
+    /* ── Shared device selector ── */
+    .shared-section { display: none; }
+    .shared-section.show { display: block; }
+    select { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); font-family: 'Sarabun', sans-serif; font-size: 15px; background: #fff; color: var(--text); appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2378909c' d='M6 8L0 0h12z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+
+    /* ── Camera ── */
+    .cam-wrap { position: relative; background: #000; border-radius: 14px; overflow: hidden; aspect-ratio: 3/4; border: 1px solid var(--border); }
+    #video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .cam-stamp { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 20px 14px 12px; }
+    .cam-time { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #fff; font-weight: 600; }
+    .cam-info { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 2px; }
+    .gps-block-overlay { position: absolute; inset: 0; background: rgba(192,57,43,0.15); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border-radius: 14px; backdrop-filter: blur(2px); }
+    .gps-block-overlay p { font-size: 14px; font-weight: 600; color: var(--red); text-align: center; }
+
+    /* ── Capture btn ── */
+    .capture-wrap { display: flex; align-items: center; justify-content: center; gap: 20px; }
+    .capture-btn { width: 68px; height: 68px; border-radius: 50%; background: var(--dark); border: 3px solid var(--border); font-size: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; box-shadow: var(--shadow); }
+    .capture-btn:active { transform: scale(0.92); }
+    .capture-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .back-btn { padding: 10px 18px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); font-family: 'Sarabun', sans-serif; font-size: 14px; cursor: pointer; color: var(--text); }
+
+    /* ── Buttons ── */
+    .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-family: 'Sarabun', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .btn-primary { background: var(--dark); color: #fff; }
+    .btn-primary:active { background: #2a2a3e; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-ghost { background: var(--card); color: var(--muted); border: 1px solid var(--border); }
+    .btn-green { background: var(--green); color: #fff; }
+    .btn-red   { background: var(--red);   color: #fff; }
+
+    /* ── Preview ── */
+    #previewImg { width: 100%; border-radius: 14px; border: 1px solid var(--border); display: block; }
+
+    /* ── Leave form ── */
+    .leave-types { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .leave-btn { padding: 12px 6px; border-radius: 10px; border: 2px solid var(--border); background: var(--card); font-family: 'Sarabun', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; text-align: center; color: var(--muted); transition: all 0.15s; }
+    .leave-btn.sel { border-color: var(--blue); background: var(--blue-light); color: var(--blue); }
+    textarea { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); font-family: 'Sarabun', sans-serif; font-size: 14px; resize: none; height: 80px; background: #fff; }
+    .upload-area { border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; font-size: 14px; color: var(--muted); cursor: pointer; position: relative; }
+    .upload-area input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .upload-area.has-file { border-color: var(--green); color: var(--green); background: var(--green-light); }
+
+    /* ── Success ── */
+    .success-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; }
+    .success-circle { width: 88px; height: 88px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 42px; animation: pop 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+    @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+    .sc-green { background: var(--green-light); border: 2px solid var(--green-border); }
+    .sc-gold  { background: var(--gold-light);  border: 2px solid #ffe082; }
+    .sc-red   { background: var(--red-light);   border: 2px solid #ef9a9a; }
+    .success-title { font-size: 22px; font-weight: 700; }
+    .detail-table { width: 100%; }
+    .detail-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: var(--muted); }
+    .detail-val { font-weight: 600; font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+
+    /* ── Loading ── */
+    .loading-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+    .spinner { width: 44px; height: 44px; border: 3px solid var(--border); border-top-color: var(--dark); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error ── */
+    .err-box { background: var(--red-light); border: 1px solid #ef9a9a; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: var(--red); display: none; }
+    .err-box.show { display: block; }
+
+    /* ── Divider ── */
+    .divider { height: 1px; background: var(--border); }
+
+    /* ── Nav tabs ── */
+    .nav-tabs { display: flex; gap: 4px; background: #eceff1; border-radius: 10px; padding: 4px; }
+    .nav-tab { flex: 1; padding: 8px; border-radius: 7px; text-align: center; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--muted); transition: all 0.15s; }
+    .nav-tab.active { background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+
+    canvas { display: none; }
+
+    /* ── Info row ── */
+    .info-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+    .info-label { color: var(--muted); }
+    .info-val { font-weight: 500; }
+
+    /* ── Vacation badge ── */
+    .vac-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-logo">⏱</div>
+  <div class="header-info">
+    <h1>บริษัท รุ่งเรืองเจริญ จำกัด</h1>
+    <p id="headerDate">--</p>
+  </div>
+  <div class="header-clock" id="clock">--:--</div>
+</header>
+
+<!-- ══ LOADING ══ -->
+<div class="screen active" id="scrLoading">
+  <div class="loading-wrap">
+    <div class="spinner"></div>
+    <p style="color:var(--muted); font-size:14px;">กำลังโหลด...</p>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<div class="screen" id="scrMain">
+  <!-- User -->
+  <div class="card">
+    <div class="user-row">
+      <div class="avatar" id="avatarEl">👤</div>
+      <div>
+        <div class="user-name" id="userName">--</div>
+        <div class="user-id" id="userId">--</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shared device selector -->
+  <div class="card shared-section" id="sharedSection">
+    <div class="card-title">📱 มือถือส่วนกลาง — เลือกชื่อพนักงาน</div>
+    <select id="empSelect">
+      <option value="">-- กรุณาเลือกชื่อ --</option>
+    </select>
+  </div>
+
+  <!-- GPS status -->
+  <div class="status-row s-wait" id="gpsCard">
+    <div class="status-icon">📡</div>
+    <div style="flex:1">
+      <div class="status-text" id="gpsText">กำลังตรวจสอบตำแหน่ง...</div>
+      <div class="status-sub" id="gpsSub">รอสัญญาณ GPS</div>
+    </div>
+  </div>
+
+  <!-- Time status -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:14px; color:var(--muted);">สถานะเวลา</span>
+      <span class="time-badge tb-closed" id="timeBadge">⏳ ยังไม่ถึงเวลา</span>
+    </div>
+    <div style="margin-top:8px; font-size:12px; color:var(--muted); line-height:1.8;">
+      🌟 07:40–07:59 = มาเช้า (+20฿)<br>
+      ✅ 08:00–08:15 = ปกติ<br>
+      ⚠️ 08:16 ขึ้นไป = สาย (หักนาทีละ 1฿)<br>
+      🕛 ออกครึ่งวัน = เช็คออกตั้งแต่ 12:00
+    </div>
+  </div>
+
+  <!-- Vacation remaining -->
+  <div class="card" id="vacCard" style="display:none;">
+    <div class="card-title">🏖 วันลาคงเหลือ</div>
+    <div id="vacInfo" style="font-size:13px; color:var(--muted);">กำลังโหลด...</div>
+  </div>
+
+  <!-- Action tabs -->
+  <div class="nav-tabs">
+    <div class="nav-tab active" id="tabCheckin" onclick="switchTab('checkin')">📷 เช็คอิน</div>
+    <div class="nav-tab" id="tabLeave" onclick="switchTab('leave')">📋 ขอลา</div>
+  </div>
+
+  <!-- Checkin section -->
+  <div id="sectionCheckin">
+    <div class="card">
+      <div class="card-title">เลือกประเภท</div>
+      <div class="type-grid">
+        <button class="type-btn sel-in" id="btnIn" onclick="setType('in')">🟢 เข้างาน</button>
+        <button class="type-btn" id="btnOut" onclick="setType('out')">🔴 ออกงาน<br><span style="font-size:11px; font-weight:400;">(ครึ่งวัน)</span></button>
+      </div>
+    </div>
+    <div class="err-box" id="mainErr"></div>
+    <button class="btn btn-primary" id="openCamBtn" onclick="openCamera()">📷 เปิดกล้องเช็คอิน</button>
+  </div>
+
+  <!-- Leave section -->
+  <div id="sectionLeave" style="display:none;">
+    <div class="card">
+      <div class="card-title">ประเภทการลา</div>
+      <div class="leave-types">
+        <button class="leave-btn" id="lv-sick" onclick="setLeave('sick')">🤒 ลาป่วย</button>
+        <button class="leave-btn" id="lv-personal" onclick="setLeave('personal')">📝 ลากิจ</button>
+        <button class="leave-btn" id="lv-vacation" onclick="setLeave('vacation')">🏖 พักร้อน</button>
+      </div>
+    </div>
+    <div class="card" id="leaveForm" style="display:none;">
+      <div class="card-title">รายละเอียด</div>
+
+      <div style="margin-bottom:10px;">
+        <div style="font-size:13px; color:var(--muted); margin-bottom:6px;">วันที่ลา</div>
+        <input type="date" id="leaveDate" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); font-family:'Sarabun',sans-serif; font-size:14px;" />
+      </div>
+
+      <div style="margin-bottom:10px;">
+        <div style="font-size:13px; color:var(--muted); margin-bottom:6px;">ลาเต็มวันหรือครึ่งวัน</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <button class="type-btn sel-in" id="dayFull" onclick="setDayType('full')">เต็มวัน</button>
+          <button class="type-btn" id="dayHalf" onclick="setDayType('half')">ครึ่งวัน</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px;">
+        <div style="font-size:13px; color:var(--muted); margin-bottom:6px;">เหตุผล</div>
+        <textarea id="leaveReason" placeholder="ระบุเหตุผล..."></textarea>
+      </div>
+
+      <div id="medCertSection" style="display:none; margin-bottom:10px;">
+        <div style="font-size:13px; color:var(--muted); margin-bottom:6px;">แนบใบรับรองแพทย์ <span style="color:var(--red);">*</span></div>
+        <div class="upload-area" id="uploadArea">
+          <div>📎 แตะเพื่อเลือกไฟล์</div>
+          <div style="font-size:11px; margin-top:4px;">JPG, PNG, PDF</div>
+          <input type="file" accept="image/*,application/pdf" onchange="handleFileUpload(this)" />
+        </div>
+      </div>
+
+      <div class="err-box" id="leaveErr"></div>
+      <button class="btn btn-primary" style="margin-top:8px;" onclick="submitLeave()">📤 ส่งคำขอลา</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CAMERA ══ -->
+<div class="screen" id="scrCamera">
+  <div class="cam-wrap">
+    <video id="video" autoplay playsinline muted></video>
+    <div class="cam-stamp">
+      <div class="cam-time" id="camTime">--/--/---- --:--:--</div>
+      <div class="cam-info" id="camInfo">-- | บริษัท รุ่งเรืองเจริญ จำกัด</div>
+    </div>
+    <div class="gps-block-overlay" id="gpsOverlay" style="display:none;">
+      <div style="font-size:40px;">🚫</div>
+      <p>นอกพื้นที่ออฟฟิศ<br>ไม่สามารถถ่ายภาพได้</p>
+    </div>
+  </div>
+
+  <div class="status-row" id="camGpsCard" style="border:1px solid var(--border);">
+    <div class="status-icon">📡</div>
+    <div style="flex:1">
+      <div class="status-text" id="camGpsText">ตรวจสอบ GPS...</div>
+      <div class="status-sub" id="camGpsSub">--</div>
+    </div>
+    <span class="time-badge" id="camTimeBadge" style="font-size:11px;">--</span>
+  </div>
+
+  <div class="capture-wrap">
+    <button class="back-btn" onclick="closeCamera()">← กลับ</button>
+    <button class="capture-btn" id="captureBtn" onclick="capture()" disabled>📸</button>
+    <div style="width:64px;"></div>
+  </div>
+  <canvas id="canvas"></canvas>
+</div>
+
+<!-- ══ PREVIEW ══ -->
+<div class="screen" id="scrPreview">
+  <p class="card-title" style="padding:0 2px;">ตรวจสอบภาพก่อนยืนยัน</p>
+  <img id="previewImg" src="" alt="preview"/>
+  <div class="err-box" id="previewErr"></div>
+  <button class="btn btn-green" onclick="submitCheckin()">✅ ยืนยันเช็คอิน</button>
+  <button class="btn btn-ghost" onclick="retake()">🔄 ถ่ายใหม่</button>
+</div>
+
+<!-- ══ SUBMITTING ══ -->
+<div class="screen" id="scrSubmit">
+  <div class="loading-wrap">
+    <div class="spinner" style="border-top-color:var(--green);"></div>
+    <p style="color:var(--muted); font-size:14px;">กำลังบันทึก...</p>
+  </div>
+</div>
+
+<!-- ══ SUCCESS ══ -->
+<div class="screen" id="scrSuccess">
+  <div class="success-wrap">
+    <div class="success-circle" id="sucCircle">✅</div>
+    <div>
+      <div class="success-title" id="sucTitle">เช็คอินสำเร็จ!</div>
+      <div style="font-size:13px; color:var(--muted); margin-top:4px;" id="sucSub">บันทึกข้อมูลเรียบร้อย</div>
+    </div>
+    <div class="card" style="width:100%;">
+      <div class="detail-table" id="sucDetails"></div>
+    </div>
+    <button class="btn btn-ghost" onclick="reset()">เสร็จสิ้น</button>
+  </div>
+</div>
+
+<!-- ══ LEAVE SUCCESS ══ -->
+<div class="screen" id="scrLeaveSuccess">
+  <div class="success-wrap">
+    <div class="success-circle sc-blue" style="background:var(--blue-light); border-color:#90caf9;">📋</div>
+    <div>
+      <div class="success-title" style="color:var(--blue);">ส่งคำขอลาแล้ว!</div>
+      <div style="font-size:13px; color:var(--muted); margin-top:4px;">รอผู้บริหาร Approve ค่ะ</div>
+    </div>
+    <div class="card" style="width:100%;">
+      <div class="detail-table" id="leaveDetails"></div>
+    </div>
+    <button class="btn btn-ghost" onclick="reset()">เสร็จสิ้น</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// CONFIG — แก้ค่าตรงนี้เท่านั้น
+// ══════════════════════════════════════════
+const CONFIG = {
+  LIFF_ID:         "2010079434-bhFnuuYC",
+  GAS_URL:         "https://script.google.com/macros/s/AKfycbzfeTcAbn_Rh1t6v0sfv9WZ2-zqTMEtCPYbf-oApYHGslyQSz6S4blQ6m77Be5QcoES/exec",
+  OFFICE_LAT:      13.6780514,
+  OFFICE_LNG:      100.4301434,
+  OFFICE_RADIUS_M: 100,
+  OFFICE_NAME:     "รุ่งเรืองเจริญ",
+
+  // พนักงานที่ไม่มีมือถือ (ใส่ LINE User ID ของมือถือส่วนกลาง)
+  SHARED_DEVICE_IDS: [],
+
+  // รายชื่อพนักงานที่ไม่มีมือถือ
+  SHARED_EMPLOYEES: [
+    { id: "EMP001", name: "โต้ง" },
+  ],
+
+  // เวลาทำงาน
+  TIME_OPEN:   { h: 7,  m: 40 },
+  TIME_EARLY:  { h: 7,  m: 40 },
+  TIME_EARLY_END: { h: 7, m: 59 },
+  TIME_NORMAL: { h: 8,  m: 0  },
+  TIME_LATE:   { h: 8,  m: 16 },
+  TIME_HALFDAY:{ h: 12, m: 0  },
+};
+
+// ── State ──
+const S = {
+  profile: null,
+  effectiveUserId: null,
+  effectiveName: null,
+  gpsOk: false,
+  lat: null, lng: null, dist: null,
+  stream: null,
+  dataURL: null,
+  checkinType: 'in',
+  isShared: false,
+  leaveType: null,
+  dayType: 'full',
+  leaveFileB64: null,
+  leaveFileName: null,
+};
+
+// ── Clock ──
+function pad(n) { return String(n).padStart(2,'0'); }
+function nowStr() {
+  const d = new Date();
+  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+function updateClock() {
+  const d = new Date();
+  document.getElementById('clock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  document.getElementById('headerDate').textContent =
+    d.toLocaleDateString('th-TH', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
+  const camTime = document.getElementById('camTime');
+  if (camTime) camTime.textContent = nowStr();
+  updateTimeBadge();
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function getTimeStatus() {
+  const d = new Date();
+  const h = d.getHours(), m = d.getMinutes();
+  const mins = h * 60 + m;
+  const open    = CONFIG.TIME_OPEN.h   * 60 + CONFIG.TIME_OPEN.m;
+  const earlyEnd= CONFIG.TIME_EARLY_END.h * 60 + CONFIG.TIME_EARLY_END.m;
+  const normal  = CONFIG.TIME_NORMAL.h * 60 + CONFIG.TIME_NORMAL.m;
+  const late    = CONFIG.TIME_LATE.h   * 60 + CONFIG.TIME_LATE.m;
+  const half    = CONFIG.TIME_HALFDAY.h* 60 + CONFIG.TIME_HALFDAY.m;
+  if (mins < open) return { type: 'closed', label: '⏳ ยังไม่ถึงเวลา', cls: 'tb-closed', lateMin: 0 };
+  if (mins <= earlyEnd) return { type: 'early', label: '🌟 มาเช้า +20฿', cls: 'tb-early', lateMin: 0 };
+  if (mins <= normal + 15) return { type: 'normal', label: '✅ เวลาปกติ', cls: 'tb-normal', lateMin: 0 };
+  const lateMin = mins - late + (mins >= late ? 0 : 0);
+  const actualLate = Math.max(0, mins - (CONFIG.TIME_LATE.h * 60 + CONFIG.TIME_LATE.m) + 1);
+  return { type: 'late', label: `⚠️ สาย ${actualLate} นาที`, cls: 'tb-late', lateMin: actualLate };
+}
+
+function updateTimeBadge() {
+  const st = getTimeStatus();
+  ['tb-early','tb-normal','tb-late','tb-closed'].forEach(c => {
+    document.getElementById('timeBadge')?.classList.remove(c);
+    document.getElementById('camTimeBadge')?.classList.remove(c);
+  });
+  const tb = document.getElementById('timeBadge');
+  const cb = document.getElementById('camTimeBadge');
+  if (tb) { tb.textContent = st.label; tb.classList.add(st.cls); }
+  if (cb) { cb.textContent = st.label; cb.classList.add(st.cls); }
+}
+
+// ── GPS ──
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLon = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function onGPS(pos) {
+  S.lat = pos.coords.latitude;
+  S.lng = pos.coords.longitude;
+  S.dist = haversine(S.lat, S.lng, CONFIG.OFFICE_LAT, CONFIG.OFFICE_LNG);
+  S.gpsOk = S.dist <= CONFIG.OFFICE_RADIUS_M;
+  const distTxt = S.dist < 1000 ? `${Math.round(S.dist)} ม.` : `${(S.dist/1000).toFixed(1)} กม.`;
+  const sub = `ห่างออฟฟิศ ${distTxt} (รัศมี ${CONFIG.OFFICE_RADIUS_M} ม.)`;
+
+  // main
+  const gc = document.getElementById('gpsCard');
+  const gt = document.getElementById('gpsText');
+  const gs = document.getElementById('gpsSub');
+  gc.className = `status-row ${S.gpsOk ? 's-ok' : 's-bad'}`;
+  gt.textContent = S.gpsOk ? '✅ อยู่ในพื้นที่ออฟฟิศ' : '❌ นอกพื้นที่ออฟฟิศ';
+  if (gs) gs.textContent = sub;
+
+  // camera
+  const ct = document.getElementById('camGpsText');
+  const cs = document.getElementById('camGpsSub');
+  const cc = document.getElementById('camGpsCard');
+  const ov = document.getElementById('gpsOverlay');
+  const cb = document.getElementById('captureBtn');
+  if (ct) ct.textContent = S.gpsOk ? '✅ GPS ผ่าน — ถ่ายได้' : '❌ GPS ไม่ผ่าน';
+  if (cs) cs.textContent = sub;
+  if (cc) cc.className = `status-row ${S.gpsOk ? 's-ok' : 's-bad'}`;
+  if (ov) ov.style.display = S.gpsOk ? 'none' : 'flex';
+  if (cb) cb.disabled = !S.gpsOk;
+}
+
+function onGPSErr(e) {
+  const gc = document.getElementById('gpsCard');
+  const gt = document.getElementById('gpsText');
+  if (gc) gc.className = 'status-row s-bad';
+  if (gt) gt.textContent = '⚠️ ไม่สามารถรับ GPS ได้';
+}
+
+navigator.geolocation?.watchPosition(onGPS, onGPSErr, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+
+// ── Tab / Type ──
+function switchTab(tab) {
+  ['checkin','leave'].forEach(t => {
+    document.getElementById(`tab${t.charAt(0).toUpperCase()+t.slice(1)}`).classList.toggle('active', t === tab);
+    document.getElementById(`section${t.charAt(0).toUpperCase()+t.slice(1)}`).style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+function setType(type) {
+  S.checkinType = type;
+  document.getElementById('btnIn').className  = `type-btn ${type==='in'  ? 'sel-in'  : ''}`;
+  document.getElementById('btnOut').className = `type-btn ${type==='out' ? 'sel-out' : ''}`;
+  const ci = document.getElementById('camInfo');
+  if (ci) ci.textContent = `${S.effectiveName || '--'} | ${type==='in' ? 'เข้างาน' : 'ออกงาน (ครึ่งวัน)'} | ${CONFIG.OFFICE_NAME}`;
+}
+
+// ── Leave ──
+function setLeave(type) {
+  S.leaveType = type;
+  ['sick','personal','vacation'].forEach(t => {
+    document.getElementById(`lv-${t}`).classList.toggle('sel', t === type);
+  });
+  document.getElementById('leaveForm').style.display = 'block';
+  document.getElementById('medCertSection').style.display = type === 'sick' ? 'block' : 'none';
+  showErr('leaveErr','');
+}
+
+function setDayType(type) {
+  S.dayType = type;
+  document.getElementById('dayFull').className = `type-btn ${type==='full' ? 'sel-in' : ''}`;
+  document.getElementById('dayHalf').className = `type-btn ${type==='half' ? 'sel-in' : ''}`;
+}
+
+function handleFileUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const area = document.getElementById('uploadArea');
+  area.classList.add('has-file');
+  area.querySelector('div').textContent = `✅ ${file.name}`;
+  S.leaveFileName = file.name;
+  const reader = new FileReader();
+  reader.onload = e => { S.leaveFileB64 = e.target.result.split(',')[1]; };
+  reader.readAsDataURL(file);
+}
+
+async function submitLeave() {
+  if (!S.leaveType) { showErr('leaveErr','กรุณาเลือกประเภทการลา'); return; }
+  const date = document.getElementById('leaveDate').value;
+  if (!date) { showErr('leaveErr','กรุณาเลือกวันที่ลา'); return; }
+  const reason = document.getElementById('leaveReason').value.trim();
+  if (!reason) { showErr('leaveErr','กรุณาระบุเหตุผล'); return; }
+  if (S.leaveType === 'sick' && !S.leaveFileB64) { showErr('leaveErr','กรุณาแนบใบรับรองแพทย์'); return; }
+
+  showScreen('scrSubmit');
+  const payload = {
+    action: 'leave',
+    userId: S.effectiveUserId,
+    displayName: S.effectiveName,
+    leaveType: S.leaveType,
+    dayType: S.dayType,
+    date,
+    reason,
+    medCert: S.leaveFileB64 || null,
+    medCertName: S.leaveFileName || null,
+  };
+
+  try {
+    const res = await fetch(CONFIG.GAS_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const json = await res.json();
+    if (json.status === 'ok') {
+      const typeLabel = { sick:'ลาป่วย', personal:'ลากิจ', vacation:'พักร้อน' }[S.leaveType];
+      const dayLabel  = S.dayType === 'full' ? 'เต็มวัน' : 'ครึ่งวัน';
+      document.getElementById('leaveDetails').innerHTML = detailRow('👤 ชื่อ', S.effectiveName) + detailRow('📋 ประเภท', typeLabel) + detailRow('📅 วันที่', date) + detailRow('🕐 ระยะเวลา', dayLabel) + detailRow('📝 เหตุผล', reason);
+      showScreen('scrLeaveSuccess');
+    } else {
+      showScreen('scrMain');
+      showErr('leaveErr', '❌ ' + (json.message || 'ลองใหม่อีกครั้ง'));
+    }
+  } catch(e) {
+    showScreen('scrMain');
+    showErr('leaveErr','❌ เชื่อมต่อ server ไม่ได้');
+  }
+}
+
+// ── Camera ──
+async function openCamera() {
+  const ts = getTimeStatus();
+  if (ts.type === 'closed') { showErr('mainErr','⏳ ยังไม่ถึงเวลาเปิดรับเช็คอิน (07:40 น.)'); return; }
+  if (S.checkinType === 'out') {
+    const d = new Date(); const mins = d.getHours()*60+d.getMinutes();
+    if (mins < CONFIG.TIME_HALFDAY.h*60+CONFIG.TIME_HALFDAY.m) { showErr('mainErr','🕛 เช็คออกครึ่งวันได้ตั้งแต่ 12:00 น. เป็นต้นไป'); return; }
+  }
+  if (S.isShared && !document.getElementById('empSelect').value) { showErr('mainErr','กรุณาเลือกชื่อพนักงานก่อน'); return; }
+  showErr('mainErr','');
+  try {
+    S.stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user', width:{ideal:1280}, height:{ideal:720} }, audio:false });
+    document.getElementById('video').srcObject = S.stream;
+    document.getElementById('camInfo').textContent = `${S.effectiveName || '--'} | ${S.checkinType==='in' ? 'เข้างาน' : 'ออกงาน (ครึ่งวัน)'} | ${CONFIG.OFFICE_NAME}`;
+    if (S.gpsOk) { document.getElementById('gpsOverlay').style.display='none'; document.getElementById('captureBtn').disabled=false; }
+    else { document.getElementById('gpsOverlay').style.display='flex'; document.getElementById('captureBtn').disabled=true; }
+    showScreen('scrCamera');
+  } catch(e) { showErr('mainErr','❌ ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตสิทธิ์กล้อง'); }
+}
+
+function closeCamera() { stopStream(); showScreen('scrMain'); }
+function stopStream() { S.stream?.getTracks().forEach(t=>t.stop()); S.stream=null; }
+
+function capture() {
+  if (!S.gpsOk) return;
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  canvas.width  = Math.min(video.videoWidth  || 640, 640);
+  canvas.height = Math.min(video.videoHeight || 480, 480);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  // Watermark bar
+  const barH = 70;
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  ctx.fillRect(0, canvas.height-barH, canvas.width, barH);
+  ctx.fillStyle = '#fff';
+  const fSize = Math.round(canvas.width*0.027);
+  ctx.font = `600 ${fSize}px "IBM Plex Mono", monospace`;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(nowStr(), 16, canvas.height-barH+20);
+  ctx.font = `${Math.round(canvas.width*0.022)}px "Sarabun", sans-serif`;
+  const typeLabel = S.checkinType==='in' ? 'เข้างาน' : 'ออกงาน (ครึ่งวัน)';
+  ctx.fillText(`${S.effectiveName} | ${typeLabel} | ${CONFIG.OFFICE_NAME}`, 16, canvas.height-barH+48);
+
+  S.dataURL = canvas.toDataURL('image/jpeg', 0.5);
+  document.getElementById('previewImg').src = S.dataURL;
+  stopStream();
+  showScreen('scrPreview');
+}
+
+function retake() { S.dataURL=null; openCamera(); }
+
+// ── Submit checkin ──
+async function submitCheckin() {
+  if (!S.dataURL) return;
+  showScreen('scrSubmit');
+  const d = new Date();
+  const ts = getTimeStatus();
+  const payload = {
+    action: 'checkin',
+    userId: S.effectiveUserId,
+    displayName: S.effectiveName,
+    pictureUrl: S.profile?.pictureUrl || '',
+    checkinType: S.checkinType,
+    date: `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`,
+    timeStatus: ts.type,
+    lateMinutes: ts.lateMin,
+    earlyBonus: ts.type==='early' ? 20 : 0,
+    lat: S.lat, lng: S.lng, dist: Math.round(S.dist),
+    image: S.dataURL,
+  };
+
+  try {
+    const res = await fetch(CONFIG.GAS_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const json = await res.json();
+    if (json.status === 'ok') {
+      // circle color
+      const cc = document.getElementById('sucCircle');
+      cc.className = `success-circle ${ts.type==='early'?'sc-gold':ts.type==='late'?'sc-red':'sc-green'}`;
+      cc.textContent = ts.type==='early'?'🌟':ts.type==='late'?'⚠️':'✅';
+      document.getElementById('sucTitle').textContent = payload.checkinType==='in' ? (ts.type==='early'?'มาเช้า! ได้เบี้ยขยัน':ts.type==='late'?'เช็คอินแล้ว (สาย)':'เช็คอินสำเร็จ!') : 'เช็คออกครึ่งวันแล้ว!';
+      document.getElementById('sucSub').textContent = ts.type==='early'?'+20฿ เบี้ยขยันวันนี้':ts.type==='late'?`สาย ${ts.lateMin} นาที หัก ${ts.lateMin}฿`:'บันทึกข้อมูลเรียบร้อย';
+      document.getElementById('sucDetails').innerHTML =
+        detailRow('👤 ชื่อ', payload.displayName) +
+        detailRow('📅 วันที่', payload.date) +
+        detailRow('⏰ เวลา', payload.time) +
+        detailRow('📋 ประเภท', payload.checkinType==='in'?'เข้างาน':'ออกงาน (ครึ่งวัน)') +
+        detailRow('📍 ระยะห่าง', `${payload.dist} ม.`) +
+        (ts.type==='early' ? detailRow('🌟 เบี้ยขยัน', '+20฿') : '') +
+        (ts.type==='late'  ? detailRow('⚠️ สาย', `${ts.lateMin} นาที (-${ts.lateMin}฿)`) : '');
+      showScreen('scrSuccess');
+    } else {
+      showScreen('scrPreview');
+      showErr('previewErr','❌ '+(json.message||'บันทึกไม่สำเร็จ ลองใหม่'));
+    }
+  } catch(e) {
+    showScreen('scrPreview');
+    showErr('previewErr','❌ เชื่อมต่อ server ไม่ได้ กรุณาลองใหม่');
+  }
+}
+
+function detailRow(label, val) {
+  return `<div class="detail-row"><span class="detail-label">${label}</span><span class="detail-val">${val}</span></div>`;
+}
+
+// ── Helpers ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function showErr(id, msg) {
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.textContent=msg;
+  el.classList.toggle('show',!!msg);
+}
+function reset() {
+  S.dataURL=null; S.leaveType=null; S.leaveFileB64=null;
+  S.checkinType='in';
+  setType('in');
+  switchTab('checkin');
+  showScreen('scrMain');
+}
+
+// ── Vacation info ──
+async function loadVacInfo() {
+  try {
+    const res = await fetch(`${CONFIG.GAS_URL}?action=vacinfo&userId=${S.effectiveUserId}`);
+    const json = await res.json();
+    if (json.status==='ok') {
+      const vcard = document.getElementById('vacCard');
+      const vinfo = document.getElementById('vacInfo');
+      vcard.style.display='block';
+      vinfo.innerHTML =
+        `<div style="display:flex; gap:8px; flex-wrap:wrap;">` +
+        `<span class="vac-badge" style="background:var(--green-light);color:var(--green);border:1px solid var(--green-border);">🏖 พักร้อนคงเหลือ: ${json.vacRemain} วัน</span>` +
+        `<span class="vac-badge" style="background:var(--blue-light);color:var(--blue);border:1px solid #90caf9;">🤒 ลาป่วยปีนี้: ${json.sickUsed} วัน</span>` +
+        `<span class="vac-badge" style="background:var(--gold-light);color:var(--gold);border:1px solid #ffe082;">📝 ลากิจปีนี้: ${json.personalUsed} วัน</span>` +
+        `</div>`;
+    }
+  } catch(e) {}
+}
+
+// ── INIT ──
+async function init() {
+  try {
+    console.log('LIFF init start, ID:', CONFIG.LIFF_ID);
+    await liff.init({ liffId: CONFIG.LIFF_ID });
+    console.log('LIFF init done, isLoggedIn:', liff.isLoggedIn());
+    if (!liff.isLoggedIn()) {
+      console.log('Not logged in, redirecting...');
+      liff.login({ redirectUri: location.href });
+      return;
+    }
+    S.profile = await liff.getProfile();
+    console.log('Profile:', S.profile.displayName, S.profile.userId);
+  } catch(e) {
+    console.error('LIFF Error:', e);
+    document.getElementById('scrLoading').innerHTML =
+      '<div style="padding:32px; text-align:center; font-family:Sarabun,sans-serif;">' +
+      '<div style="font-size:48px; margin-bottom:16px;">⚠️</div>' +
+      '<div style="font-size:16px; font-weight:600; color:#c0392b; margin-bottom:8px;">LIFF Error</div>' +
+      '<div style="font-size:13px; color:#333; margin-bottom:8px; word-break:break-all;">' + e.message + '</div>' +
+      '<div style="font-size:12px; color:#999;">ID: ' + CONFIG.LIFF_ID + '</div>' +
+      '<div style="font-size:12px; color:#999; margin-top:8px;">URL: ' + location.href + '</div>' +
+      '</div>';
+    return;
+  }
+
+  S.isShared = CONFIG.SHARED_DEVICE_IDS.includes(S.profile.userId);
+
+  if (S.isShared) {
+    const sel = document.getElementById('empSelect');
+    CONFIG.SHARED_EMPLOYEES.forEach(emp => {
+      const opt = document.createElement('option');
+      opt.value = emp.id; opt.textContent = emp.name;
+      sel.appendChild(opt);
+    });
+    document.getElementById('sharedSection').classList.add('show');
+    sel.addEventListener('change', () => {
+      const emp = CONFIG.SHARED_EMPLOYEES.find(e=>e.id===sel.value);
+      S.effectiveUserId = emp?.id || null;
+      S.effectiveName   = emp?.name || null;
+      if (S.effectiveName) loadVacInfo();
+    });
+    S.effectiveUserId = null;
+    S.effectiveName   = null;
+  } else {
+    S.effectiveUserId = S.profile.userId;
+    S.effectiveName   = S.profile.displayName;
+    if (S.profile.pictureUrl) {
+      document.getElementById('avatarEl').innerHTML = `<img src="${S.profile.pictureUrl}" alt="avatar"/>`;
+    }
+    loadVacInfo();
+  }
+
+  document.getElementById('userName').textContent = S.isShared ? '📱 มือถือส่วนกลาง' : S.profile.displayName;
+  document.getElementById('userId').textContent   = `ID: ${S.profile.userId.substring(0,14)}...`;
+
+  showScreen('scrMain');
+}
+
+init();
+</script>
+</body>
+</html>
