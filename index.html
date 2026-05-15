@@ -439,17 +439,22 @@ function getTimeStatus() {
   const d = new Date();
   const h = d.getHours(), m = d.getMinutes();
   const mins = h * 60 + m;
-  const open    = CONFIG.TIME_OPEN.h   * 60 + CONFIG.TIME_OPEN.m;
-  const earlyEnd= CONFIG.TIME_EARLY_END.h * 60 + CONFIG.TIME_EARLY_END.m;
-  const normal  = CONFIG.TIME_NORMAL.h * 60 + CONFIG.TIME_NORMAL.m;
-  const late    = CONFIG.TIME_LATE.h   * 60 + CONFIG.TIME_LATE.m;
-  const half    = CONFIG.TIME_HALFDAY.h* 60 + CONFIG.TIME_HALFDAY.m;
-  if (mins < open) return { type: 'closed', label: '⏳ ยังไม่ถึงเวลา', cls: 'tb-closed', lateMin: 0 };
-  if (mins <= earlyEnd) return { type: 'early', label: '🌟 มาเช้า +20฿', cls: 'tb-early', lateMin: 0 };
-  if (mins <= normal + 15) return { type: 'normal', label: '✅ เวลาปกติ', cls: 'tb-normal', lateMin: 0 };
-  const lateMin = mins - late + (mins >= late ? 0 : 0);
-  const actualLate = Math.max(0, mins - (CONFIG.TIME_LATE.h * 60 + CONFIG.TIME_LATE.m) + 1);
-  return { type: 'late', label: `⚠️ สาย ${actualLate} นาที`, cls: 'tb-late', lateMin: actualLate };
+  const open     = CONFIG.TIME_OPEN.h      * 60 + CONFIG.TIME_OPEN.m;
+  const earlyEnd = CONFIG.TIME_EARLY_END.h * 60 + CONFIG.TIME_EARLY_END.m;
+  const normal   = CONFIG.TIME_NORMAL.h    * 60 + CONFIG.TIME_NORMAL.m;
+  const late     = CONFIG.TIME_LATE.h      * 60 + CONFIG.TIME_LATE.m;
+  const half     = CONFIG.TIME_HALFDAY.h   * 60 + CONFIG.TIME_HALFDAY.m;
+
+  // ลาครึ่งวันเช้า มาเช็คอินบ่าย ตั้งแต่ 12:00 น. ไม่นับสาย
+  if (S.checkinType === 'in' && mins >= half) {
+    return { type: 'halfday_pm', label: 'เช็คอินบ่าย (ลาครึ่งวันเช้า)', cls: 'tb-normal', lateMin: 0 };
+  }
+
+  if (mins < open) return { type: 'closed', label: 'ยังไม่ถึงเวลา (07:40 น.)', cls: 'tb-closed', lateMin: 0 };
+  if (mins <= earlyEnd) return { type: 'early', label: 'มาเช้า +20฿', cls: 'tb-early', lateMin: 0 };
+  if (mins <= normal + 15) return { type: 'normal', label: 'เวลาปกติ', cls: 'tb-normal', lateMin: 0 };
+  const actualLate = Math.max(0, mins - late + 1);
+  return { type: 'late', label: 'สาย ' + actualLate + ' นาที', cls: 'tb-late', lateMin: actualLate };
 }
 
 function updateTimeBadge() {
@@ -653,7 +658,8 @@ async function submitCheckin() {
   if (!S.dataURL) return;
   showScreen('scrSubmit');
   const d = new Date();
-  const ts = getTimeStatus();
+  // นับสายเฉพาะเช็คอินเข้างานเท่านั้น
+  const ts = S.checkinType === 'in' ? getTimeStatus() : { type: 'normal', label: 'ออกครึ่งวัน', cls: 'tb-normal', lateMin: 0 };
   const payload = {
     action: 'checkin',
     userId: S.effectiveUserId,
