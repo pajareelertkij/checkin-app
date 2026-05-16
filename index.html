@@ -701,7 +701,6 @@ async function submitCheckin() {
   showScreen('scrSubmit');
   const d = new Date();
   // คำนวณสถานะเวลา
-  const d = new Date();
   const nowMins = d.getHours() * 60 + d.getMinutes();
   const halfMins = CONFIG.TIME_HALFDAY.h * 60 + CONFIG.TIME_HALFDAY.m;
   let ts;
