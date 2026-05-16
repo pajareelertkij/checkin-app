@@ -839,18 +839,17 @@ async function loadVacInfo() {
 
 // ── INIT ──
 async function init() {
-  // Timeout 10 วินาที ถ้า LIFF โหลดนานเกินไป
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('LIFF timeout - ใช้เวลานานเกินไป')), 10000)
-  );
-
   try {
     console.log('LIFF init start, ID:', CONFIG.LIFF_ID);
-    await Promise.race([
-      liff.init({ liffId: CONFIG.LIFF_ID }),
-      timeout
-    ]);
+
+    // ถ้าไม่มี liff object = โหลด SDK ไม่ได้
+    if (typeof liff === 'undefined') {
+      throw new Error('LIFF SDK โหลดไม่ได้ กรุณาเปิดในแอป LINE');
+    }
+
+    await liff.init({ liffId: CONFIG.LIFF_ID });
     console.log('LIFF init done, isLoggedIn:', liff.isLoggedIn());
+
     if (!liff.isLoggedIn()) {
       console.log('Not logged in, redirecting...');
       liff.login({ redirectUri: location.href });
@@ -860,14 +859,14 @@ async function init() {
     console.log('Profile:', S.profile.displayName, S.profile.userId);
   } catch(e) {
     console.error('LIFF Error:', e);
-    document.getElementById('scrLoading').innerHTML =
-      '<div style="padding:32px; text-align:center; font-family:Sarabun,sans-serif;">' +
+    const errDiv = document.getElementById('scrLoading');
+    errDiv.innerHTML =
+      '<div style="padding:32px; text-align:center; font-family:Sarabun,sans-serif; color:#333;">' +
       '<div style="font-size:48px; margin-bottom:16px;">⚠️</div>' +
-      '<div style="font-size:16px; font-weight:600; color:#c0392b; margin-bottom:8px;">LIFF Error</div>' +
-      '<div style="font-size:13px; color:#333; margin-bottom:8px; word-break:break-all;">' + e.message + '</div>' +
-      '<div style="font-size:12px; color:#999;">ID: ' + CONFIG.LIFF_ID + '</div>' +
-      '<div style="font-size:12px; color:#999; margin-top:8px;">URL: ' + location.href + '</div>' +
-      '<br><button onclick="location.reload()" style="padding:10px 20px; background:#1a1a2e; color:white; border:none; border-radius:8px; font-size:14px; cursor:pointer;">🔄 ลองใหม่</button>' +
+      '<div style="font-size:16px; font-weight:600; color:#c0392b; margin-bottom:8px;">เกิดข้อผิดพลาด</div>' +
+      '<div style="font-size:13px; margin-bottom:8px; word-break:break-all; padding:0 16px;">' + e.message + '</div>' +
+      '<div style="font-size:11px; color:#999; margin-bottom:16px;">LIFF ID: ' + CONFIG.LIFF_ID + '</div>' +
+      '<button onclick="location.reload()" style="padding:12px 24px; background:#1a1a2e; color:white; border:none; border-radius:8px; font-size:14px; cursor:pointer; font-family:Sarabun,sans-serif;">🔄 ลองใหม่</button>' +
       '</div>';
     return;
   }
