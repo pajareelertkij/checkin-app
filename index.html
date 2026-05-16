@@ -73,7 +73,8 @@
     .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .type-btn { padding: 14px 10px; border-radius: 12px; border: 2px solid var(--border); background: var(--card); font-family: 'Sarabun', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.15s; color: var(--muted); }
     .type-btn.sel-in  { border-color: var(--green); background: var(--green-light); color: var(--green); }
-    .type-btn.sel-out { border-color: var(--red);   background: var(--red-light);   color: var(--red); }
+    .type-btn.sel-out   { border-color: var(--red);   background: var(--red-light);   color: var(--red); }
+    .type-btn.sel-field { border-color: var(--blue);  background: var(--blue-light);  color: var(--blue); }
 
     /* ── Shared device selector ── */
     .shared-section { display: none; }
@@ -238,10 +239,11 @@
   <div id="sectionCheckin">
     <div class="card">
       <div class="card-title">เลือกประเภท</div>
-      <div class="type-grid">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px;">
         <button class="type-btn sel-in" id="btnIn" onclick="setType('in')">🟢 เข้างาน<br><span style="font-size:11px; font-weight:400;" id="btnInSub">ระบบคำนวณเวลาให้อัตโนมัติ</span></button>
         <button class="type-btn" id="btnOut" onclick="setType('out')">🔴 ออกงาน<br><span style="font-size:11px; font-weight:400;">(ครึ่งวัน ตั้งแต่ 12:00)</span></button>
       </div>
+      <button class="type-btn" id="btnField" onclick="setType('field')" style="width:100%;">🚗 ปฏิบัติงานนอกสถานที่<br><span style="font-size:11px; font-weight:400;">ถ่ายรูป ไม่ต้องเช็ค GPS</span></button>
     </div>
     <div class="err-box" id="mainErr"></div>
     <button class="btn btn-primary" id="openCamBtn" onclick="openCamera()">📷 เปิดกล้องเช็คอิน</button>
@@ -377,7 +379,7 @@
 // ══════════════════════════════════════════
 const CONFIG = {
   LIFF_ID:         "2010079434-bhFnuuYC",
-  GAS_URL:         "https://script.google.com/macros/s/AKfycbzYI8ntTAnivdamZf-DbRp5a7vWdK78WCoQjfFagjAxHUyAH4r-zJOkrM0LIdKXp94d/exec",
+  GAS_URL:         "https://script.google.com/macros/s/AKfycbzfeTcAbn_Rh1t6v0sfv9WZ2-zqTMEtCPYbf-oApYHGslyQSz6S4blQ6m77Be5QcoES/exec",
   OFFICE_LAT:      13.6780514,
   OFFICE_LNG:      100.4301434,
   OFFICE_RADIUS_M: 100,
@@ -541,10 +543,12 @@ function switchTab(tab) {
 
 function setType(type) {
   S.checkinType = type;
-  document.getElementById('btnIn').className  = `type-btn ${type==='in'  ? 'sel-in'  : ''}`;
-  document.getElementById('btnOut').className = `type-btn ${type==='out' ? 'sel-out' : ''}`;
+  document.getElementById('btnIn').className    = 'type-btn ' + (type==='in'    ? 'sel-in'   : '');
+  document.getElementById('btnOut').className   = 'type-btn ' + (type==='out'   ? 'sel-out'  : '');
+  document.getElementById('btnField').className = 'type-btn ' + (type==='field' ? 'sel-field' : '');
+  const typeLabel = type==='in' ? 'เข้างาน' : type==='out' ? 'ออกงาน (ครึ่งวัน)' : 'ปฏิบัติงานนอกสถานที่';
   const ci = document.getElementById('camInfo');
-  if (ci) ci.textContent = `${S.effectiveName || '--'} | ${type==='in' ? 'เข้างาน' : 'ออกงาน (ครึ่งวัน)'} | ${CONFIG.OFFICE_NAME}`;
+  if (ci) ci.textContent = (S.effectiveName || '--') + ' | ' + typeLabel + ' | ' + CONFIG.OFFICE_NAME;
 }
 
 // ── Leave ──
@@ -617,22 +621,45 @@ async function submitLeave() {
 
 // ── Camera ──
 async function openCamera() {
-  const ts = getTimeStatus();
-  if (ts.type === 'closed') { showErr('mainErr','⏳ ยังไม่ถึงเวลาเปิดรับเช็คอิน (07:40 น.)'); return; }
-  if (S.checkinType === 'out') {
-    const d = new Date(); const mins = d.getHours()*60+d.getMinutes();
-    if (mins < CONFIG.TIME_HALFDAY.h*60+CONFIG.TIME_HALFDAY.m) { showErr('mainErr','🕛 เช็คออกครึ่งวันได้ตั้งแต่ 12:00 น. เป็นต้นไป'); return; }
-  }
-  if (S.isShared && !document.getElementById('empSelect').value) { showErr('mainErr','กรุณาเลือกชื่อพนักงานก่อน'); return; }
   showErr('mainErr','');
+
+  // ตรวจสอบเวลาเปิด (ยกเว้น field)
+  if (S.checkinType !== 'field') {
+    const ts2 = getTimeStatus();
+    if (ts2.type === 'closed') { showErr('mainErr','ยังไม่ถึงเวลาเปิดรับเช็คอิน (07:40 น.)'); return; }
+  }
+
+  // ตรวจสอบเวลาออกครึ่งวัน
+  if (S.checkinType === 'field') {
+    // นอกสถานที่ — นับสาย แต่ไม่มีเบี้ยขยัน
+    const rawTs = getTimeStatus();
+    ts = { type: rawTs.type==='late' ? 'late' : 'normal', label: 'นอกสถานที่', cls: 'tb-normal', lateMin: rawTs.lateMin, earlyBonus: 0 };
+  } else if (S.checkinType === 'out') {
+    const d2 = new Date(); const mins2 = d2.getHours()*60+d2.getMinutes();
+    if (mins2 < CONFIG.TIME_HALFDAY.h*60+CONFIG.TIME_HALFDAY.m) { showErr('mainErr','เช็คออกครึ่งวันได้ตั้งแต่ 12:00 น. เป็นต้นไป'); return; }
+  }
+
+  if (S.isShared && !document.getElementById('empSelect').value) { showErr('mainErr','กรุณาเลือกชื่อพนักงานก่อน'); return; }
+
   try {
     S.stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user', width:{ideal:1280}, height:{ideal:720} }, audio:false });
     document.getElementById('video').srcObject = S.stream;
-    document.getElementById('camInfo').textContent = `${S.effectiveName || '--'} | ${S.checkinType==='in' ? 'เข้างาน' : 'ออกงาน (ครึ่งวัน)'} | ${CONFIG.OFFICE_NAME}`;
-    if (S.gpsOk) { document.getElementById('gpsOverlay').style.display='none'; document.getElementById('captureBtn').disabled=false; }
-    else { document.getElementById('gpsOverlay').style.display='flex'; document.getElementById('captureBtn').disabled=true; }
+    const typeLabel = S.checkinType==='in' ? 'เข้างาน' : S.checkinType==='out' ? 'ออกงาน (ครึ่งวัน)' : 'ปฏิบัติงานนอกสถานที่';
+    document.getElementById('camInfo').textContent = (S.effectiveName || '--') + ' | ' + typeLabel + ' | ' + CONFIG.OFFICE_NAME;
+
+    // field ไม่ต้องเช็ค GPS
+    if (S.checkinType === 'field') {
+      document.getElementById('gpsOverlay').style.display = 'none';
+      document.getElementById('captureBtn').disabled = false;
+    } else if (S.gpsOk) {
+      document.getElementById('gpsOverlay').style.display = 'none';
+      document.getElementById('captureBtn').disabled = false;
+    } else {
+      document.getElementById('gpsOverlay').style.display = 'flex';
+      document.getElementById('captureBtn').disabled = true;
+    }
     showScreen('scrCamera');
-  } catch(e) { showErr('mainErr','❌ ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตสิทธิ์กล้อง'); }
+  } catch(e) { showErr('mainErr','ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตสิทธิ์กล้อง'); }
 }
 
 function closeCamera() { stopStream(); showScreen('scrMain'); }
@@ -673,8 +700,34 @@ async function submitCheckin() {
   if (!S.dataURL) return;
   showScreen('scrSubmit');
   const d = new Date();
-  // นับสายเฉพาะเช็คอินเข้างานเท่านั้น
-  const ts = S.checkinType === 'in' ? getTimeStatus() : { type: 'normal', label: 'ออกครึ่งวัน', cls: 'tb-normal', lateMin: 0 };
+  // คำนวณสถานะเวลา
+  const d = new Date();
+  const nowMins = d.getHours() * 60 + d.getMinutes();
+  const halfMins = CONFIG.TIME_HALFDAY.h * 60 + CONFIG.TIME_HALFDAY.m;
+  let ts;
+  if (S.checkinType === 'field') {
+    // นอกสถานที่ — นับสาย แต่ไม่มีเบี้ยขยัน
+    const rawTs = getTimeStatus();
+    ts = { type: rawTs.type==='late' ? 'late' : 'normal', label: 'นอกสถานที่', cls: 'tb-normal', lateMin: rawTs.lateMin, earlyBonus: 0 };
+  } else if (S.checkinType === 'out') {
+    // ออกครึ่งวัน — ดึงสถานะเช้าวันนี้ (เบี้ยขยัน + สาย)
+    const todayStr = pad(d.getDate()) + '/' + pad(d.getMonth()+1) + '/' + d.getFullYear();
+    let morningBonus = 0;
+    let morningLate  = 0;
+    try {
+      const mRes = await fetch(CONFIG.GAS_URL + '?action=morning_status&userId=' + S.effectiveUserId + '&date=' + todayStr, { redirect: 'follow' });
+      const mJson = await mRes.json();
+      morningBonus = mJson.earlyBonus  || 0;
+      morningLate  = mJson.lateMinutes || 0;
+    } catch(e) { morningBonus = 0; morningLate = 0; }
+    ts = { type: 'out', label: 'ออกครึ่งวัน', cls: 'tb-normal', lateMin: morningLate, earlyBonus: morningBonus };
+  } else if (nowMins >= halfMins) {
+    // เข้างานบ่าย (ลาครึ่งวันเช้า) — ไม่นับสาย ไม่มีเบี้ยขยัน
+    ts = { type: 'halfday_pm', label: 'เช็คอินบ่าย', cls: 'tb-normal', lateMin: 0, earlyBonus: 0 };
+  } else {
+    // เข้างานเช้าปกติ — คำนวณสาย/เช้า/ปกติ
+    ts = getTimeStatus();
+  }
   const payload = {
     action: 'checkin',
     userId: S.effectiveUserId,
@@ -686,7 +739,7 @@ async function submitCheckin() {
     time: `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`,
     timeStatus: ts.type,
     lateMinutes: ts.lateMin,
-    earlyBonus: ts.type==='early' ? 20 : 0,
+    earlyBonus: ts.earlyBonus !== undefined ? ts.earlyBonus : (ts.type === 'early' ? 20 : 0),
     lat: S.lat, lng: S.lng, dist: Math.round(S.dist),
     image: S.dataURL,
   };
@@ -699,8 +752,30 @@ async function submitCheckin() {
       const cc = document.getElementById('sucCircle');
       cc.className = `success-circle ${ts.type==='early'?'sc-gold':ts.type==='late'?'sc-red':'sc-green'}`;
       cc.textContent = ts.type==='early'?'🌟':ts.type==='late'?'⚠️':'✅';
-      document.getElementById('sucTitle').textContent = payload.checkinType==='in' ? (ts.type==='early'?'มาเช้า! ได้เบี้ยขยัน':ts.type==='late'?'เช็คอินแล้ว (สาย)':'เช็คอินสำเร็จ!') : 'เช็คออกครึ่งวันแล้ว!';
-      document.getElementById('sucSub').textContent = ts.type==='early'?'+20฿ เบี้ยขยันวันนี้':ts.type==='late'?`สาย ${ts.lateMin} นาที หัก ${ts.lateMin}฿`:'บันทึกข้อมูลเรียบร้อย';
+      // แสดงผลตาม checkinType จริงๆ
+      const isOut   = S.checkinType === 'out';
+      const isPM    = payload.checkinType === 'in_pm';
+      let titleText = '';
+      if (isOut) {
+        titleText = 'เช็คออกครึ่งวันแล้ว!';
+      } else if (isPM) {
+        titleText = 'เช็คอินบ่ายสำเร็จ!';
+      } else if (ts.type === 'early') {
+        titleText = 'มาเช้า! ได้เบี้ยขยัน';
+      } else if (ts.type === 'late') {
+        titleText = 'เช็คอินแล้ว (สาย)';
+      } else {
+        titleText = 'เช็คอินสำเร็จ!';
+      }
+      document.getElementById('sucTitle').textContent = titleText;
+      document.getElementById('sucSub').textContent = isPM
+        ? 'บันทึกข้อมูลเรียบร้อย'
+        : isOut && ts.earlyBonus > 0 ? '+20฿ เบี้ยขยัน (มาเช้าตอนเช้า)'
+        : isOut && ts.lateMin > 0    ? 'สาย ' + ts.lateMin + ' นาที หัก ' + ts.lateMin + '฿'
+        : isOut ? 'บันทึกข้อมูลเรียบร้อย'
+        : ts.type==='early' ? '+20฿ เบี้ยขยันวันนี้'
+        : ts.type==='late'  ? 'สาย ' + ts.lateMin + ' นาที หัก ' + ts.lateMin + '฿'
+        : 'บันทึกข้อมูลเรียบร้อย';
       document.getElementById('sucDetails').innerHTML =
         detailRow('👤 ชื่อ', payload.displayName) +
         detailRow('📅 วันที่', payload.date) +
@@ -708,7 +783,7 @@ async function submitCheckin() {
         detailRow('📋 ประเภท', payload.checkinType==='in'?'เข้างาน':'ออกงาน (ครึ่งวัน)') +
         detailRow('📍 ระยะห่าง', `${payload.dist} ม.`) +
         (ts.type==='early' ? detailRow('🌟 เบี้ยขยัน', '+20฿') : '') +
-        (ts.type==='late'  ? detailRow('⚠️ สาย', `${ts.lateMin} นาที (-${ts.lateMin}฿)`) : '');
+        ((!isPM && ts.lateMin > 0) ? detailRow('⚠️ สาย', ts.lateMin + ' นาที (-' + ts.lateMin + '฿)') : '');
       showScreen('scrSuccess');
     } else {
       showScreen('scrPreview');
