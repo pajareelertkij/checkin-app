@@ -642,8 +642,8 @@ function capture() {
   if (!S.gpsOk) return;
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
-  canvas.width  = Math.min(video.videoWidth  || 640, 640);
-  canvas.height = Math.min(video.videoHeight || 480, 480);
+  canvas.width  = video.videoWidth  || 1280;
+  canvas.height = video.videoHeight || 720;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
@@ -660,7 +660,7 @@ function capture() {
   const typeLabel = S.checkinType==='in' ? 'เข้างาน' : 'ออกงาน (ครึ่งวัน)';
   ctx.fillText(`${S.effectiveName} | ${typeLabel} | ${CONFIG.OFFICE_NAME}`, 16, canvas.height-barH+48);
 
-  S.dataURL = canvas.toDataURL('image/jpeg', 0.5);
+  S.dataURL = canvas.toDataURL('image/jpeg', 0.6);
   document.getElementById('previewImg').src = S.dataURL;
   stopStream();
   showScreen('scrPreview');
@@ -687,7 +687,7 @@ async function submitCheckin() {
     lateMinutes: ts.lateMin,
     earlyBonus: ts.type==='early' ? 20 : 0,
     lat: S.lat, lng: S.lng, dist: Math.round(S.dist),
-    image: '',
+    image: S.dataURL,
   };
 
   try {
