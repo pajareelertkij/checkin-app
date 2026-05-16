@@ -680,7 +680,8 @@ async function submitCheckin() {
     userId: S.effectiveUserId,
     displayName: S.effectiveName,
     pictureUrl: S.profile?.pictureUrl || '',
-    checkinType: S.checkinType,
+    checkinType: S.checkinType === 'out' ? 'out'
+      : (new Date().getHours() * 60 + new Date().getMinutes()) >= (CONFIG.TIME_HALFDAY.h * 60 + CONFIG.TIME_HALFDAY.m) ? 'in_pm' : 'in_am',
     date: `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`,
     time: `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`,
     timeStatus: ts.type,
