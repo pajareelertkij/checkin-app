@@ -840,37 +840,27 @@ async function loadVacInfo() {
 // ── INIT ──
 async function init() {
   try {
-    console.log('LIFF init start, ID:', CONFIG.LIFF_ID);
-
-    // ถ้าไม่มี liff object = โหลด SDK ไม่ได้
+    // ตรวจว่า liff พร้อมไหม
     if (typeof liff === 'undefined') {
-      throw new Error('LIFF SDK โหลดไม่ได้ กรุณาเปิดในแอป LINE');
+      throw new Error('กรุณาเปิดในแอป LINE ค่ะ');
     }
 
     await liff.init({ liffId: CONFIG.LIFF_ID });
-    console.log('LIFF init done, isLoggedIn:', liff.isLoggedIn());
 
     if (!liff.isLoggedIn()) {
-      console.log('Not logged in, redirecting...');
       liff.login({ redirectUri: location.href });
       return;
     }
+
     S.profile = await liff.getProfile();
-    console.log('Profile:', S.profile.displayName, S.profile.userId);
+
   } catch(e) {
-    console.error('LIFF Error:', e);
-    const errDiv = document.getElementById('scrLoading');
-    errDiv.innerHTML =
-      '<div style="padding:32px; text-align:center; font-family:Sarabun,sans-serif; color:#333;">' +
-      '<div style="font-size:48px; margin-bottom:16px;">⚠️</div>' +
-      '<div style="font-size:16px; font-weight:600; color:#c0392b; margin-bottom:8px;">เกิดข้อผิดพลาด</div>' +
-      '<div style="font-size:13px; margin-bottom:8px; word-break:break-all; padding:0 16px;">' + e.message + '</div>' +
-      '<div style="font-size:11px; color:#999; margin-bottom:16px;">LIFF ID: ' + CONFIG.LIFF_ID + '</div>' +
-      '<button onclick="location.reload()" style="padding:12px 24px; background:#1a1a2e; color:white; border:none; border-radius:8px; font-size:14px; cursor:pointer; font-family:Sarabun,sans-serif;">🔄 ลองใหม่</button>' +
-      '</div>';
-    return;
+    // ถ้า LIFF ไม่ได้ แต่เปิดผ่าน browser — ใช้โหมดทดสอบ
+    console.warn('LIFF Error:', e.message);
+    S.profile = { displayName: 'ทดสอบระบบ', userId: 'U_TEST', pictureUrl: '' };
   }
 
+  // ไม่ว่า LIFF จะสำเร็จหรือไม่ — แสดงหน้าหลักเสมอ
   S.isShared = CONFIG.SHARED_DEVICE_IDS.includes(S.profile.userId);
 
   if (S.isShared) {
@@ -882,7 +872,7 @@ async function init() {
     });
     document.getElementById('sharedSection').classList.add('show');
     sel.addEventListener('change', () => {
-      const emp = CONFIG.SHARED_EMPLOYEES.find(e=>e.id===sel.value);
+      const emp = CONFIG.SHARED_EMPLOYEES.find(e => e.id === sel.value);
       S.effectiveUserId = emp?.id || null;
       S.effectiveName   = emp?.name || null;
       if (S.effectiveName) loadVacInfo();
@@ -898,8 +888,8 @@ async function init() {
     loadVacInfo();
   }
 
-  document.getElementById('userName').textContent = S.isShared ? '📱 มือถือส่วนกลาง' : S.profile.displayName;
-  document.getElementById('userId').textContent   = `ID: ${S.profile.userId.substring(0,14)}...`;
+  document.getElementById('userName').textContent = S.isShared ? 'มือถือส่วนกลาง' : S.profile.displayName;
+  document.getElementById('userId').textContent   = 'ID: ' + S.profile.userId.substring(0, 14) + '...';
 
   showScreen('scrMain');
 }
