@@ -239,8 +239,8 @@
     <div class="card">
       <div class="card-title">เลือกประเภท</div>
       <div class="type-grid">
-        <button class="type-btn sel-in" id="btnIn" onclick="setType('in')">🟢 เข้างาน</button>
-        <button class="type-btn" id="btnOut" onclick="setType('out')">🔴 ออกงาน<br><span style="font-size:11px; font-weight:400;">(ครึ่งวัน)</span></button>
+        <button class="type-btn sel-in" id="btnIn" onclick="setType('in')">🟢 เข้างาน<br><span style="font-size:11px; font-weight:400;" id="btnInSub">ระบบคำนวณเวลาให้อัตโนมัติ</span></button>
+        <button class="type-btn" id="btnOut" onclick="setType('out')">🔴 ออกงาน<br><span style="font-size:11px; font-weight:400;">(ครึ่งวัน ตั้งแต่ 12:00)</span></button>
       </div>
     </div>
     <div class="err-box" id="mainErr"></div>
@@ -467,6 +467,21 @@ function updateTimeBadge() {
   const cb = document.getElementById('camTimeBadge');
   if (tb) { tb.textContent = st.label; tb.classList.add(st.cls); }
   if (cb) { cb.textContent = st.label; cb.classList.add(st.cls); }
+  
+  // อัปเดตคำอธิบายในปุ่มเข้างาน
+  const d = new Date();
+  const mins = d.getHours() * 60 + d.getMinutes();
+  const half = CONFIG.TIME_HALFDAY.h * 60 + CONFIG.TIME_HALFDAY.m;
+  const sub = document.getElementById('btnInSub');
+  if (sub) {
+    if (mins >= half) {
+      sub.textContent = 'ลาครึ่งวันเช้า มาทำงานบ่าย';
+      sub.style.color = 'var(--blue)';
+    } else {
+      sub.textContent = 'ระบบคำนวณเวลาให้อัตโนมัติ';
+      sub.style.color = '';
+    }
+  }
 }
 
 // ── GPS ──
